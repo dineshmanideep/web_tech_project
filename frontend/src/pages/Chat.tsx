@@ -89,18 +89,22 @@ const Chat = () => {
 
     const sendMessage = async (data: { text?: string; image?: string }) => {
         try {
-            const response = await axiosInstance.post(`/message/send/${id}`, data , {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-            console.log("Message sent:", response.data.newMessage);
-            setMessages((prevMessages:Message[]) => {
-                if (!prevMessages) return [response.data.newMessage];
-                return [...prevMessages, response.data.newMessage];
+            console.log("📤 Sending message:", data);
+            
+            // ✅ Remove the multipart/form-data header - let axios handle JSON
+            const response = await axiosInstance.post(`/message/send/${id}`, data);
+            
+            console.log("✅ Message sent response:", response.data);
+            
+            // ✅ Use 'message' not 'newMessage' (backend returns 'newMessage')
+            const sentMessage = response.data.newMessage;
+            
+            setMessages((prevMessages: Message[]) => {
+                if (!prevMessages) return [sentMessage];
+                return [...prevMessages, sentMessage];
             });
         } catch (error) {
-            console.error("Error sending message:", error);
+            console.error("❌ Error sending message:", error);
         }
     }
 
@@ -176,8 +180,9 @@ const Chat = () => {
                                                         <img
                                                             src={message.image}
                                                             alt="Attachment"
-                                                            className="rounded-md max-w-full"
+                                                            className="rounded-md max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
                                                             loading="lazy"
+                                                            onClick={() => window.open(message.image, '_blank')}
                                                         />
                                                     </div>
                                                 )}

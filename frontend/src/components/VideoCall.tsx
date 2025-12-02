@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 import { useVideoCall } from '../context/VideoCallContext';
+import toast from 'react-hot-toast';
 
 const VideoCall: React.FC = () => {
     const { localStream, remoteStream, endCall, callStatus, answerCall, rejectCall } = useVideoCall();
@@ -64,6 +65,16 @@ const VideoCall: React.FC = () => {
             if (audioTrack) {
                 audioTrack.enabled = !audioTrack.enabled;
                 setIsMuted(!audioTrack.enabled);
+                
+                if (!audioTrack.enabled) {
+                    toast.success('Microphone muted', {
+                        icon: '🔇',
+                    });
+                } else {
+                    toast.success('Microphone unmuted', {
+                        icon: '🎤',
+                    });
+                }
             }
         }
     };
@@ -74,6 +85,16 @@ const VideoCall: React.FC = () => {
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
                 setIsVideoOff(!videoTrack.enabled);
+                
+                if (!videoTrack.enabled) {
+                    toast.success('Camera turned off', {
+                        icon: '📷',
+                    });
+                } else {
+                    toast.success('Camera turned on', {
+                        icon: '📹',
+                    });
+                }
             }
         }
     };
@@ -91,6 +112,9 @@ const VideoCall: React.FC = () => {
 
     const handleRejectCall = () => {
         rejectCall();  // Reject the call and end the session
+        toast.success('Call rejected', {
+            icon: '🚫',
+        });
     };
 
     if (callStatus === 'idle') return null;

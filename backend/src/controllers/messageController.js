@@ -65,35 +65,76 @@ export const fetchMessages =async(req,res)=>{
 }
 
 
-export const sendMessage =async(req,res)=>{
+export const sendMessage = async(req, res) => {
     try {
-        const senderId=req.user._id;
-        const {receiverId}=req.params;
-
-        const {text,image}=req.body;
-        let imageUrl;
-        if(image){
-            console.log("identified as image")
-            const uploadData= await cloudinary.uploader.upload(image);
-            // const uploadData= await v2.uploader.upload(image);
-            imageUrl=uploadData.secure_url;
-
+        const senderId = req.user._id;
+        const { receiverId } = req.params;
+        const { text, image } = req.body;
+        
+        // ✅ Debug logging
+        console.log("📤 Send Message Request:");
+        console.log("Sender ID:", senderId);
+        console.log("Receiver ID:", receiverId);
+        console.log("Text:", text);
+        console.log("Image:", image ? "Image data present" : "No image");
+        console.log("Full body:", req.body);
+        
+        // ✅ Validate that either text or image exists
+        if (!text && !image) {
+            console.log("❌ Empty message - no text or image");
+            return res.status(400).json({
+                success: false,
+                message: "Message must contain either text or image"
+            });
+        }
+        
+        let imageUrl = null;
+        
+        if (image) {
+            try {
+                console.log("🖼️ Uploading image to Cloudinary...");
+                const uploadData = await cloudinary.uploader.upload(image);
+                imageUrl = uploadData.secure_url;
+                console.log("✅ Image uploaded:", imageUrl);
+            } catch (uploadError) {
+                console.error("❌ Cloudinary upload error:", uploadError);
+                return res.status(500).json({
+                    success: false,
+                    message: "Failed to upload image"
+                });
+            }
         }
 
         const newMessage = new Message({
-            senderId:senderId,
-            receiverId:receiverId,
-            text,
-            image:imageUrl,
+            senderId: senderId,
+            receiverId: receiverId,
+            text: text || "",
+            image: imageUrl,
         });
+        
+        console.log("💾 Saving message:", {
+            senderId: newMessage.senderId,
+            receiverId: newMessage.receiverId,
+            text: newMessage.text,
+            hasImage: !!newMessage.image
+        });
+        
         await newMessage.save();
-        const reciverSocketId=getSocketId(receiverId);
-        if(reciverSocketId)
-        io.to(reciverSocketId).emit("newMessage",newMessage);
+        console.log("✅ Message saved with ID:", newMessage._id);
+        
+        const receiverSocketId = getSocketId(receiverId);
+        console.log("🔍 Receiver socket ID:", receiverSocketId);
+        
+        if (receiverSocketId) {
+            console.log("📡 Emitting to receiver socket");
+            io.to(receiverSocketId).emit("newMessage", newMessage);
+        } else {
+            console.log("⚠️ Receiver not online");
+        }
 
-        res.status(201).json({success:true,newMessage})
+        res.status(201).json({ success: true, newMessage });
     } catch (error) {
-        console.log("failed to save message",error);
-        res.status(500).json({success:false,message:error})
+        console.error("❌ Failed to save message:", error);
+        res.status(500).json({ success: false, message: error.message });
     }
 }

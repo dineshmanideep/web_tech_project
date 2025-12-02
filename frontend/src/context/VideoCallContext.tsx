@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useApp } from './AppContext';
+import toast from 'react-hot-toast';
 
 // WebRTC configuration
 const peerConfiguration = {
@@ -35,22 +36,22 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidate[]>([]);
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
+  const listenersSetupRef = useRef(false);
 
-
-  useEffect(() => {
+  // useEffect(() => {
    
-    console.log("Socket in VideoCallContext:", socket);
-    console.log("PeerConnectionRef in VideoCallContext:", peerConnectionRef.current);
-    console.log("IsInCall in VideoCallContext:", isInCall);
-    console.log("CallStatus in VideoCallContext:", callStatus);
-    console.log("CallerId in VideoCallContext:", callerId);
-    console.log("LocalStream in VideoCallContext:", localStream);
-    console.log("RemoteStream in VideoCallContext:", remoteStream);
-    console.log("PendingCandidatesRef in VideoCallContext:", pendingCandidatesRef.current);
-    console.log("PendingOfferRef in VideoCallContext:", pendingOfferRef.current);
-    console.log("PeerConfiguration in VideoCallContext:", peerConfiguration);
+  //   console.log("Socket in VideoCallContext:", socket);
+  //   console.log("PeerConnectionRef in VideoCallContext:", peerConnectionRef.current);
+  //   console.log("IsInCall in VideoCallContext:", isInCall);
+  //   console.log("CallStatus in VideoCallContext:", callStatus);
+  //   console.log("CallerId in VideoCallContext:", callerId);
+  //   console.log("LocalStream in VideoCallContext:", localStream);
+  //   console.log("RemoteStream in VideoCallContext:", remoteStream);
+  //   console.log("PendingCandidatesRef in VideoCallContext:", pendingCandidatesRef.current);
+  //   console.log("PendingOfferRef in VideoCallContext:", pendingOfferRef.current);
+  //   console.log("PeerConfiguration in VideoCallContext:", peerConfiguration);
 
-  }, [socket, peerConnectionRef.current, isInCall, callStatus, callerId, localStream, remoteStream, pendingCandidatesRef.current, pendingOfferRef.current, peerConfiguration]);
+  // }, [socket, peerConnectionRef.current, isInCall, callStatus, callerId, localStream, remoteStream, pendingCandidatesRef.current, pendingOfferRef.current, peerConfiguration]);
 
 
 
@@ -81,6 +82,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setCallStatus('idle');
     setIsInCall(false);
     setCallerId(null);
+    
+    toast.success('Call ended', {
+      icon: '📞',
+    });
   };
 
   // Create a new RTCPeerConnection
@@ -101,12 +106,22 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     peerConnection.oniceconnectionstatechange = () => {
       console.log('ICE connection state:', peerConnection.iceConnectionState);
+      
+      if (peerConnection.iceConnectionState === 'connected') {
+        toast.success('Video call connected', {
+          icon: '✅',
+        });
+      }
+      
       if (
         peerConnection.iceConnectionState === 'disconnected' ||
         peerConnection.iceConnectionState === 'failed' ||
         peerConnection.iceConnectionState === 'closed'
       ) {
         console.log('ICE connection failed or closed');
+        toast.error('Connection lost', {
+          icon: '📡',
+        });
         cleanupCall();
       }
     };
@@ -114,6 +129,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     peerConnection.ontrack = (event) => {
       console.log('Received remote track:', event.streams[0]);
       setRemoteStream(event.streams[0]);
+      toast.success('Receiving video stream', {
+        icon: '🎥',
+      });
     };
     
     return peerConnection;
@@ -123,11 +141,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const startCall = async (userId: string) => {
     if (isInCall || !socket) {
       console.error('Cannot start call: already in call or socket not initialized');
+      toast.error('Cannot start call at this time');
       return;
     }
     
     try {
       console.log('Starting call to user:', userId);
+      toast.loading('Initiating call...', { id: 'call-init' });
+      
       setCallerId(userId);
       setCallStatus('calling');
       setIsInCall(true);
@@ -138,6 +159,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         audio: true 
       });
       setLocalStream(stream);
+      
+      toast.success('Camera and microphone connected', { id: 'call-init' });
       
       // Create new peer connection
       const peerConnection = createPeerConnection();
@@ -162,6 +185,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         offer: peerConnection.localDescription
       });
       
+      toast.success('Calling...', {
+        icon: '📞',
+      });
+      
       // Set up socket listeners for this call
       socket.once('call-answered', async (data) => {
         if (!peerConnectionRef.current) return;
@@ -173,6 +200,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           );
           
           setCallStatus('connected');
+          toast.success('Call answered', {
+            icon: '✅',
+          });
           
           // Apply any pending ICE candidates
           pendingCandidatesRef.current.forEach(candidate => {
@@ -184,17 +214,34 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           
         } catch (error) {
           console.error('Error setting remote description:', error);
+          toast.error('Failed to establish connection');
           cleanupCall();
         }
       });
       
       socket.once('call-rejected', () => {
         console.log('Call was rejected');
+        toast.error('Call was rejected', {
+          icon: '❌',
+        });
         cleanupCall();
       });
       
     } catch (error) {
       console.error('Error starting call:', error);
+      if (error instanceof Error && error.name === 'NotAllowedError') {
+        toast.error('Camera/microphone permission denied', {
+          icon: '🚫',
+          duration: 5000,
+        });
+      } else if (error instanceof Error && error.name === 'NotFoundError') {
+        toast.error('No camera or microphone found', {
+          icon: '📷',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Failed to start call');
+      }
       cleanupCall();
     }
   };
@@ -203,11 +250,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const answerCall = async () => {
     if (!socket || !callerId || !pendingOfferRef.current) {
       console.error('Cannot answer call: missing required data');
+      toast.error('Cannot answer call at this time');
       return;
     }
     
     try {
       console.log('Answering call from:', callerId);
+      toast.loading('Connecting...', { id: 'answer-call' });
+      
       setCallStatus('connected');
       
       // Get local media
@@ -216,6 +266,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         audio: true
       });
       setLocalStream(stream);
+      
+      toast.success('Camera and microphone connected', { id: 'answer-call' });
       
       // Create peer connection
       const peerConnection = createPeerConnection();
@@ -241,6 +293,10 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         answer: peerConnection.localDescription
       });
       
+      toast.success('Call connected', {
+        icon: '✅',
+      });
+      
       // Apply any pending ICE candidates
       pendingCandidatesRef.current.forEach(candidate => {
         if (peerConnectionRef.current) {
@@ -251,6 +307,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
     } catch (error) {
       console.error('Error answering call:', error);
+      if (error instanceof Error && error.name === 'NotAllowedError') {
+        toast.error('Camera/microphone permission denied', {
+          icon: '🚫',
+          duration: 5000,
+        });
+      } else if (error instanceof Error && error.name === 'NotFoundError') {
+        toast.error('No camera or microphone found', {
+          icon: '📷',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Failed to answer call');
+      }
       cleanupCall();
     }
   };
@@ -260,6 +329,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (socket && callerId) {
       console.log('Rejecting call from:', callerId);
       socket.emit('call-rejected', { to: callerId });
+      toast.success('Call rejected', {
+        icon: '🚫',
+      });
     }
     cleanupCall();
   };
@@ -276,7 +348,18 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // Set up socket event listeners
   useEffect(() => {
-    if (!socket) return;
+  if (!socket) return;
+
+  if (listenersSetupRef.current) {
+    console.log("🛑 Listeners already set up, skipping");
+    return;
+  }
+  
+  const setupListeners = () => {
+    console.log("✅ Socket connected:", socket.id);
+    console.log("🔵 Registering socket event listeners in VideoCallContext");
+    
+    listenersSetupRef.current = true;
     
     // Handle incoming call
     const handleCallOffer = (data) => {
@@ -285,6 +368,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (isInCall) {
         console.log('Already in call, rejecting new call');
         socket.emit('call-rejected', { to: data.from });
+        toast.error('Already in a call', {
+          icon: '📞',
+        });
         return;
       }
       
@@ -292,6 +378,16 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setCallStatus('ringing');
       setIsInCall(true);
       pendingOfferRef.current = data.offer;
+      
+      toast(() => (
+        <div className="flex flex-col gap-2">
+          <span className="font-semibold">📞 Incoming Video Call</span>
+          <span className="text-sm text-gray-300">Someone is calling you</span>
+        </div>
+      ), {
+        duration: 30000,
+        icon: '📞',
+      });
     };
     
     // Handle ICE candidates
@@ -312,21 +408,58 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Handle call end
     const handleCallEnd = () => {
       console.log('Remote peer ended the call');
+      toast('Call ended by other user', {
+        icon: '📞',
+      });
       cleanupCall();
     };
-    
-    // Register event listeners
-    socket.on('call-made', handleCallOffer);
-    socket.on('ice-candidate', handleIceCandidate);
-    socket.on('call-end', handleCallEnd);
-    
-    // Cleanup event listeners
-    return () => {
-      socket.off('call-made', handleCallOffer);
-      socket.off('ice-candidate', handleIceCandidate);
-      socket.off('call-end', handleCallEnd);
+
+    // Event handlers map
+    const eventHandlers = {
+      'call-made': handleCallOffer,
+      'ice-candidate': handleIceCandidate,
+      'call-end': handleCallEnd,
     };
-  }, [socket, isInCall]);
+  
+    // Register all listeners
+    Object.entries(eventHandlers).forEach(([event, handler]) => {
+      socket.on(event, handler);
+    });
+    
+    return eventHandlers;
+  };
+  
+  // If socket is already connected, set up immediately
+  if (socket.connected) {
+    const handlers = setupListeners();
+    
+    return () => {
+      Object.entries(handlers).forEach(([event, handler]) => {
+        socket.off(event, handler);
+      });
+    };
+  }
+  
+  // Otherwise, wait for connection
+  console.log("⏳ Waiting for socket to connect...");
+  
+  const handleConnect = () => {
+    const handlers = setupListeners();
+    
+    // Store cleanup function
+    socket.once('disconnect', () => {
+      Object.entries(handlers).forEach(([event, handler]) => {
+        socket.off(event, handler);
+      });
+    });
+  };
+  
+  socket.on('connect', handleConnect);
+  
+  return () => {
+    socket.off('connect', handleConnect);
+  };
+}, [socket]);
 
   return (
     <VideoCallContext.Provider value={{
