@@ -21,10 +21,11 @@ const verifyToken = async (token) => {
     return { userId:id, role: decoded.role };
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
-      console.log("other eror")
-      // throw new Error('Invalid token');
+      console.log("Invalid token error");
+      throw new Error('Invalid token');
     }
-    console.log("error")
+    // Re-throw the error so it can be caught by protect middleware
+    throw error;
   }
 };
 

@@ -28,11 +28,12 @@ export const apiService = {
   // },
   async updatePatientProfile(userData: Partial<Patient>): Promise<Patient> {
     
-    
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/patients/profile`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       credentials:"include",
       body: JSON.stringify(userData)

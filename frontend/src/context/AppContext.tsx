@@ -53,6 +53,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const response = await axiosInstance.post('/auth/register', data);
             console.log("Signup response:", response.data);
 
+            // Store token in localStorage
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+            }
+
             setCurrentUser(response.data.data);
             const id = response.data.data._id;
             connectSocket(id);
@@ -66,6 +71,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             console.log("logindata", data);
             const response = await axiosInstance.post('/auth/login', data);
             console.log("login responce", response);
+            
+            // Store token in localStorage
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+            }
+
             setCurrentUser(response.data.data);
 
             const id = response.data.data._id;

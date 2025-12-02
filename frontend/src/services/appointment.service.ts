@@ -4,10 +4,12 @@ import {  API_URL } from './api.service';
 export const appointmentService = {
   async addAppointment(appointmentData: Partial<Appointment>): Promise<Appointment> {
     console.log("appointment data",appointmentData);
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/appointments/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       credentials:'include',
       body: JSON.stringify(appointmentData)
@@ -24,8 +26,12 @@ export const appointmentService = {
   },
 
   async getDoctorAppointments(): Promise<Appointment[]> {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/appointments/doctor/`, {
-      credentials:'include'
+      credentials:'include',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
 
     if (!response.ok) {
@@ -37,8 +43,12 @@ export const appointmentService = {
   },
 
   async getPatientAppointments(): Promise<Appointment[]> {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/appointments/patient/`, {
-      credentials:'include'
+      credentials:'include',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
 
     if (!response.ok) {
@@ -51,10 +61,12 @@ export const appointmentService = {
 
 
   async updateAppointment(appointmentId: string, appointmentData: Partial<Appointment>): Promise<Appointment> {
+     const token = localStorage.getItem('token');
      const response = await fetch(`${API_URL}/appointments/${appointmentId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       credentials:'include',
       body: JSON.stringify(appointmentData)
@@ -65,10 +77,12 @@ export const appointmentService = {
 
 
   async updateAppointmentStatus(appointmentId: string, status: string): Promise<Appointment> {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/appointments/${appointmentId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       credentials:"include",
       body: JSON.stringify({ status })
