@@ -81,12 +81,12 @@ export const register = async (req, res) => {
 
     // Generate JWT token
    
-    generateToken(user._id, role, res);
+    const token = generateToken(user._id, role);
     res.status(201).json({
       success: true,
       message: 'Registration successful',
-      data: {...user.toObject(),role}
-      
+      data: {...user.toObject(),role},
+      token
     });
   } catch (error) {
     console.error('register endpoint', error);
@@ -128,15 +128,15 @@ export const login = async (req, res) => {
     }
 
     // Generate JWT token
-    generateToken(user._id, role,res);
+    const token = generateToken(user._id, role);
     
 
 
     res.json({
       success: true,
       message: 'Login successful',
-      data: {...user.toObject(),role}
-      
+      data: {...user.toObject(),role},
+      token
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -180,9 +180,7 @@ export const getCurrentUser = async (req, res) => {
 
 export const logout = async (req,res)=>{
   try {
-
-    res.cookie("token","",{maxAge:0});
-
+    // No need to clear cookie anymore, client will remove token from localStorage
     res.status(200).json({success:true,message:'logged out succesfully'})
     
   } catch (err) {

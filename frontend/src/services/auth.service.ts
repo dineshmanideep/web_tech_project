@@ -25,7 +25,13 @@ export const authService = {
       throw new Error(error.message || 'Registration failed');
     }
     const result = await response.json();
-    console.log("registration complete ",result)
+    console.log("registration complete ",result);
+    
+    // Store token in localStorage
+    if (result.token) {
+      localStorage.setItem('token', result.token);
+    }
+    
     return result;
   },
 
@@ -46,6 +52,12 @@ export const authService = {
     }
 
     const result = await response.json();
+    
+    // Store token in localStorage
+    if (result.token) {
+      localStorage.setItem('token', result.token);
+    }
+    
     return result;
   },
 
@@ -56,7 +68,10 @@ export const authService = {
     }
 
     const response = await fetch(`${API_URL}/auth/me`, {
-      credentials:'include'
+      credentials:'include',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
 
     if (!response.ok) {

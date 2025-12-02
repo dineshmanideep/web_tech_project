@@ -30,7 +30,12 @@ const verifyToken = async (token) => {
 
 export const protect = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : null;
+      
     if(!token){
      return res.status(401).json({success:false,message:'missing token'})
     }

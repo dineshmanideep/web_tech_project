@@ -78,8 +78,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const logout = async () => {
+        localStorage.removeItem('token');
         setCurrentUser(null);
-        await axiosInstance.post('/auth/logout');
+        if (socket) {
+            socket.disconnect();
+        }
+        setSocket(null);
     }
 
     const getCurrentUser = async () => {
