@@ -14,7 +14,7 @@ const DoctorPage: React.FC = () => {
   const {currentUser} = useApp();
   const [appointment, setAppointment] = useState<Appointment>(
     {
-      date:` ${new Date()}`,
+      date: new Date().toISOString().split('T')[0], // Format: YYYY-MM-DD
       startTime: '',
       endTime: '',
       status: 'pending',
@@ -50,10 +50,9 @@ const DoctorPage: React.FC = () => {
   };
 
 
-  const handleBookAppointment = async () => {
-    //using this prevents refreshing the page after submit as this is part of the form compoent
-    //so we can check what is happenning as the code runs
-    // e.preventDefault();
+  const handleBookAppointment = async (e: React.FormEvent) => {
+    // Prevent page refresh on form submit
+    e.preventDefault();
 
     if (!doctor || !appointment) return;
 
@@ -67,11 +66,25 @@ const DoctorPage: React.FC = () => {
         mode: appointment.mode,
         reason: appointment.reason,
       };
+      console.log("Booking appointment with data:", appointmentData);
       const response = await appointmentService.addAppointment(appointmentData);
-      console.log("handle submit response",response);
+      console.log("Appointment booked successfully:", response);
+      
+      // Reset form and show success message
+      setAppointment({
+        date: new Date().toISOString().split('T')[0],
+        startTime: '',
+        endTime: '',
+        status: 'pending',
+        mode: 'chat',
+        reason: 'Checkup',
+      });
+      setError(null);
+      alert('Appointment booked successfully!');
      
-    } catch (err) {
-      setError('Failed to book appointment');
+    } catch (err: any) {
+      console.error("Failed to book appointment:", err);
+      setError(err.message || 'Failed to book appointment');
     }
   };
 
